@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "aashnakunk-dev-mcp": {
+      "command": "node",
+      "args": [
+        "/Users/aashnakunkolienker/projects/mcp_aashna/dist/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
+
