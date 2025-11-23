@@ -71,6 +71,10 @@ import {
   checkAvailability,
   listCalendars,
 } from "./tools/macos-calendar.js";
+import {
+  searchRecentHistory,
+  openUrl,
+} from "./tools/browser.js";
 
 /**
  * Creates and configures the MCP server
@@ -831,6 +835,46 @@ function createServer(): Server {
             properties: {},
           },
         },
+
+        // Browser tools
+        {
+          name: "browser_recent_history",
+          description:
+            "Search recent Chrome browsing history by text and time window. Searches both page titles and URLs. Useful for finding pages you recently visited.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "Search text to match in title OR URL",
+              },
+              days: {
+                type: "number",
+                description: "Number of days to look back (default: 3)",
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of results to return (default: 10)",
+              },
+            },
+            required: ["query"],
+          },
+        },
+        {
+          name: "browser_open_url",
+          description:
+            "Open a given URL in Google Chrome on macOS. The URL must start with http:// or https://.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "URL to open (must start with http:// or https://)",
+              },
+            },
+            required: ["url"],
+          },
+        },
       ],
     };
   });
@@ -1214,6 +1258,25 @@ function createServer(): Server {
 
       if (name === "macos_calendar_list") {
         const result = await listCalendars();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // Browser tools
+      if (name === "browser_recent_history") {
+        const result = await searchRecentHistory(
+          args.query as string,
+          args.days as number | undefined,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "browser_open_url") {
+        const result = await openUrl(args.url as string);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };

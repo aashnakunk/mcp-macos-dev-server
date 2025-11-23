@@ -1,55 +1,67 @@
-# dev-mcp
+# macchiato-mcp
 
-A local Model Context Protocol (MCP) server that exposes your development environment to AI assistants. This server provides safe, structured access to your terminal, filesystem, git repositories, and personal notes.
+A Model Context Protocol (MCP) server providing AI assistants with structured access to your macOS development environment, productivity tools, and Chrome browser history.
 
-##  What is this?
+## Overview
 
-`dev-mcp` is a personal development assistant server that runs on your laptop. It allows AI assistants (like Claude, via MCP-compatible clients) to help you:
+macchiato-mcp is a local MCP server that exposes terminal commands, filesystem operations, git repositories, macOS system tools, and browser history to AI assistants through a secure, structured interface. All operations are constrained to configured directories with built-in safety mechanisms.
 
-- Run terminal commands
-- Read and write files
-- Manage git repositories
-- Analyze project structures
-- Run tests and detect tech stacks
-- Keep personal notes and TODOs
+## Features
 
-All operations are constrained to configured "allowed roots" for safety, and dangerous commands are automatically blocked.
+- **Terminal Execution**: Run shell commands with safety controls and output management
+- **Filesystem Operations**: Read, write, list, and append files within allowed directories
+- **Git Integration**: Check status, view logs, create commits, and push changes
+- **Project Management**: Discover repositories and detect technology stacks
+- **Note Taking**: Manage personal notes and integrate with Apple Notes
+- **macOS Integration**: Control Reminders, Calendar, Clipboard, and system monitoring
+- **Network Tools**: Check connections, ports, ping hosts, and test URLs
+- **Browser History**: Search Chrome browsing history and open URLs
 
-## 🏗️ Architecture
+## Installation
 
-The project is organized for clarity and extensibility:
+### Prerequisites
 
-```
-aashna-dev-mcp/
-├── src/
-│   ├── index.ts              # MCP server entry point & tool registration
-│   ├── config.ts             # Configuration (allowed roots, safety rules)
-│   ├── core/
-│   │   ├── exec.ts           # Safe command execution
-│   │   ├── paths.ts          # Path safety & validation
-│   │   └── types.ts          # Shared TypeScript types
-│   └── tools/
-│       ├── terminal.ts       # Terminal command execution
-│       ├── filesystem.ts     # File read/write/list operations
-│       ├── git.ts            # Git status/log/commit/push
-│       ├── projects.ts       # Repo discovery & tech stack detection
-│       └── notes.ts          # Personal notes management
-├── package.json
-├── tsconfig.json
-└── mcp.config.json           # MCP client configuration
-```
+- Node.js 18.0.0 or higher
+- macOS (for system integration tools)
+- Google Chrome (for browser tools)
 
-## 🚀 Installation & Setup
+### Setup
 
-### 1. Install dependencies
+1. Clone or download this repository
 
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 2. Configure allowed roots
+3. Build the project:
+```bash
+npm run build
+```
 
-Edit `src/config.ts` to set which directories the server can access:
+4. Configure the MCP client (e.g., Claude Desktop):
+
+Edit your MCP client configuration file (for Claude Desktop: `~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "macchiato-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/macchiato-mcp/dist/index.js"],
+      "env": {}
+    }
+  }
+}
+```
+
+5. Restart your MCP client
+
+## Configuration
+
+### Allowed Directories
+
+Edit `src/config.ts` to configure which directories the server can access:
 
 ```typescript
 export const ALLOWED_ROOTS = [
@@ -60,309 +72,298 @@ export const ALLOWED_ROOTS = [
 ];
 ```
 
-**Important:** Only paths under these roots will be accessible to tools. This prevents accidental access to sensitive system files.
+Only paths under these roots will be accessible to filesystem tools. This prevents accidental access to sensitive system files.
 
-### 3. Build the project
+### Safety Configuration
 
-```bash
-npm run build
+The `DANGEROUS_PATTERNS` array in `src/config.ts` defines blocked command patterns:
+
+```typescript
+export const DANGEROUS_PATTERNS = [
+  /rm\s+-rf\s+\//,           // Prevent root deletion
+  /:\(\)\{\s*:\|:&\s*\};:/,  // Block fork bombs
+  /mkfs/,                     // Block filesystem formatting
+  // ... additional patterns
+];
 ```
 
-This compiles TypeScript to JavaScript in the `dist/` directory.
+Add or modify patterns as needed for your security requirements.
 
-### 4. Register with an MCP client
+### Timeout and Output Limits
 
-Copy `mcp.config.json` to your MCP client's configuration directory. For example, with Claude Desktop:
+Adjust command execution limits in `src/config.ts`:
 
-```bash
-# macOS
-cp mcp.config.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-# Or manually add the server to your existing config
+```typescript
+export const DEFAULT_COMMAND_TIMEOUT = 10;      // seconds
+export const DEFAULT_MAX_OUTPUT_CHARS = 10000;  // characters
 ```
 
-Update the `args` path in `mcp.config.json` to point to your compiled server:
-
-```json
-{
-  "mcpServers": {
-    "aashna-dev-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/your/aashna-dev-mcp/dist/index.js"],
-      "env": {}
-    }
-  }
-}
-```
-
-### 5. Start using it!
-
-Restart your MCP client (e.g., Claude Desktop), and the tools should be available.
-
-## 🛠️ Available Tools
+## Available Tools
 
 ### Terminal Tools
 
-#### `terminal.run_command`
-
-Executes shell commands with safety features.
-
-**Example prompts:**
-- "Run `npm install` in my project"
-- "Check what processes are using port 3000"
-- "Build the production bundle with npm run build"
-
-**Safety features:**
-- Blocks dangerous patterns (rm -rf /, fork bombs, etc.)
-- Configurable timeout (default 10s)
-- Output truncation to prevent overwhelming responses
-- Dry-run mode to preview commands
+**terminal_run_command**
+- Execute shell commands with safety features
+- Supports timeout, output truncation, and dry-run mode
+- Automatically blocks dangerous command patterns
 
 ### Filesystem Tools
 
-#### `fs.list_dir`
+**fs_list_dir**
+- List directory contents with metadata (size, modified date)
+- Only works within allowed root directories
 
-Lists directory contents with metadata.
+**fs_read_file**
+- Read file contents as UTF-8 text
+- Automatic truncation for large files
 
-**Example prompts:**
-- "Show me what's in ~/dev"
-- "List all files in the src/ directory"
+**fs_write_file**
+- Write content to files
+- Creates parent directories if needed
+- Optional overwrite protection
 
-#### `fs.read_file`
-
-Reads file contents (UTF-8).
-
-**Example prompts:**
-- "Read the package.json from my project"
-- "Show me the contents of main.py"
-
-#### `fs.write_file`
-
-Writes content to a file.
-
-**Example prompts:**
-- "Create a .gitignore file with node_modules and dist"
-- "Write this config to config.json"
-
-#### `fs.append_file`
-
-Appends to a file without overwriting.
-
-**Example prompts:**
-- "Add this line to my .env file"
-- "Append this log entry to debug.log"
+**fs_append_file**
+- Append content without overwriting existing files
 
 ### Git Tools
 
-#### `git.status`
+**git_status**
+- Get repository status, current branch, and uncommitted changes
 
-Gets repository status.
+**git_log**
+- Retrieve commit history with hash, author, date, and message
 
-**Example prompts:**
-- "Check the git status of my-project"
-- "Are there any uncommitted changes?"
+**git_commit**
+- Create commits with optional staging of all changes
 
-#### `git.log`
-
-Retrieves commit history.
-
-**Example prompts:**
-- "Show me the last 5 commits"
-- "What changes were made recently?"
-
-#### `git.commit`
-
-Creates a commit.
-
-**Example prompts:**
-- "Commit these changes with message 'Fix bug in parser'"
-- "Stage and commit all changes"
-
-#### `git.push`
-
-Pushes to remote.
-
-**Example prompts:**
-- "Push to origin main"
-- "Push my commits to the remote repository"
+**git_push**
+- Push commits to remote repositories
 
 ### Project Tools
 
-#### `project.list_repos`
+**project_list_repos**
+- Recursively find all git repositories under a directory
 
-Finds all git repositories under a directory.
+**project_detect_stack**
+- Detect language, frameworks, and common commands
+- Supports JavaScript/TypeScript, Python, Rust, Go, Java, Ruby
 
-**Example prompts:**
-- "List all repositories in ~/dev"
-- "Find all my projects"
-
-#### `project.detect_stack`
-
-Detects language, frameworks, and common commands.
-
-**Example prompts:**
-- "What tech stack is used in my-project?"
-- "How do I run tests in this repo?"
-
-Detects:
-- **Languages:** JavaScript/TypeScript, Python, Rust, Go, Java/Kotlin, Ruby
-- **Frameworks:** React, Vue, Next.js, Django, Flask, Rails, and more
-- **Commands:** Infers test and dev commands from project files
-
-#### `project.run_tests`
-
-Runs project tests (auto-detects test command if not provided).
-
-**Example prompts:**
-- "Run tests in my LangGraph project"
-- "Execute the test suite and show me failures"
+**project_run_tests**
+- Run project tests with auto-detection of test commands
 
 ### Notes Tools
 
-#### `notes.add`
+**notes_add**
+- Add notes with optional tags
+- Stored locally in `~/.aashna_dev_mcp/notes.json`
 
-Saves a note with optional tags.
+**notes_list**
+- List notes, optionally filtered by tag
 
-**Example prompts:**
-- "Add a note: 'Remember to update README' tagged with 'todo'"
-- "Save this idea: 'Build a local RAG for ML notes' tagged 'idea' and 'ml'"
+**notes_search**
+- Search notes by text or tags with substring matching
 
-#### `notes.list`
+### macOS Integration Tools
 
-Lists notes, optionally filtered by tag.
+**macos_notes_list**, **macos_notes_create**, **macos_notes_search**
+- Interact with Apple Notes app
 
-**Example prompts:**
-- "Show all my notes"
-- "List notes tagged 'todo'"
+**macos_reminders_list**, **macos_reminders_create**, **macos_reminders_complete**
+- Manage Apple Reminders
 
-#### `notes.search`
+**macos_clipboard_copy**, **macos_clipboard_read**, **macos_clipboard_clear**
+- System clipboard operations
 
-Searches notes by text or tags.
+**macos_calendar_list_events**, **macos_calendar_create_event**, **macos_calendar_check_availability**, **macos_calendar_list**
+- Calendar management
 
-**Example prompts:**
-- "Search notes for 'RAG'"
-- "Find notes mentioning 'LangGraph'"
+**macos_system_stats**
+- Get CPU usage, memory, and disk space
 
-Notes are stored in `~/.aashna_dev_mcp/notes.json`.
+**macos_process_list**, **macos_process_find**, **macos_process_kill**
+- Process monitoring and management
 
-## 🔒 Safety Features
+**macos_disk_usage**
+- Analyze disk usage for directories
+
+**macos_network_connections**, **macos_network_check_port**, **macos_network_list_ports**, **macos_network_ping**, **macos_network_dns_lookup**, **macos_network_info**, **macos_network_test_url**
+- Network diagnostics and monitoring
+
+### Browser Tools
+
+**browser_recent_history**
+- Search recent Chrome browsing history by text and time window
+- Searches both page titles and URLs
+- Parameters:
+  - `query` (required): Search text to match
+  - `days` (optional): Number of days to look back (default: 3)
+  - `limit` (optional): Maximum results to return (default: 10)
+- Returns: Array of results with title, URL, last visit time (ISO 8601), and visit count
+
+**browser_open_url**
+- Open a URL in Google Chrome on macOS
+- Parameters:
+  - `url` (required): URL to open (must start with http:// or https://)
+- Returns: Success status and message
+
+## Usage Examples
+
+### Basic Command Execution
+
+Ask your AI assistant:
+- "Run npm install in my project"
+- "Check what processes are using port 3000"
+- "Show me the git status of my repository"
+
+### File Operations
+
+- "Read the package.json from my project"
+- "Create a .gitignore file with node_modules and dist"
+- "List all files in the src directory"
+
+### Browser Integration
+
+- "Find the TypeScript tutorial I was reading yesterday"
+- "Search my Chrome history for 'React documentation' from the last week"
+- "Open that YouTube video about machine learning"
+
+### Cross-Tool Workflows
+
+- "Find the reinforcement learning video I watched and create a note with the URL"
+- "Search my history for Python tutorials and add the top 3 to my reading list in Reminders"
+- "What documentation sites did I visit this week?"
+
+## Security Features
 
 ### Path Safety
 
-All filesystem operations are constrained to `ALLOWED_ROOTS`. Attempts to access paths outside these roots will fail with a clear error.
+All filesystem operations are restricted to `ALLOWED_ROOTS`. Attempts to access paths outside these directories will fail with a clear error.
 
 ### Command Safety
 
-Dangerous command patterns are blocked:
-
-- `rm -rf /` (root deletion)
-- Fork bombs: `:(){ :|:& };:`
-- Filesystem formatting: `mkfs`
-- Direct disk writes: `dd if=...of=/dev/...`
-- Piping downloads to shell: `curl ... | bash`
+Dangerous command patterns are automatically blocked:
+- Root deletion (`rm -rf /`)
+- Fork bombs
+- Filesystem formatting (`mkfs`)
+- Direct disk writes (`dd`)
+- Piping downloads to shell (`curl ... | bash`)
 
 ### Output Management
 
 - Commands are automatically killed after timeout
 - Output is truncated to prevent memory issues
-- Structured error responses (no server crashes)
+- All errors return structured responses
 
-### Dry-Run Mode
+### Browser Safety
 
-Preview what a command would do without executing:
+- Read-only access to Chrome history database
+- URL validation before opening
+- Proper SQL escaping to prevent injection
+- Creates temporary database copies to avoid locks
 
-```json
-{
-  "command": "rm -rf dist/",
-  "dry_run": true
-}
-```
+## Development
 
-## 🧪 Development
+### Watch Mode
 
-### Watch mode
-
+Automatically rebuild on file changes:
 ```bash
 npm run dev
 ```
 
-Automatically rebuilds on file changes.
-
-### Manual testing
+### Manual Testing
 
 Run the server directly:
-
 ```bash
 npm start
 ```
 
-Or:
-
+Test browser tools:
 ```bash
-node dist/index.js
+node test-browser.js history "search query"
+node test-browser.js open "https://example.com"
 ```
 
-The server communicates over stdio using the MCP protocol.
+### Adding New Tools
 
-## 📝 Example Usage Scenarios
-
-### Scenario 1: Explore and fix failing tests
-
-**Prompt:** _"List all repositories in ~/dev, find the ones with uncommitted changes, then run tests on my-api-project and show me what's failing."_
-
-The assistant will:
-1. Use `project.list_repos` to find all repos
-2. Use `git.status` on each to check for changes
-3. Use `project.run_tests` on the specified repo
-4. Parse and summarize test failures
-
-### Scenario 2: Create a new project
-
-**Prompt:** _"Create a new directory ~/dev/my-new-app with a basic package.json, .gitignore, and README."_
-
-The assistant will:
-1. Use `fs.write_file` to create each file
-2. Populate them with sensible defaults
-3. Optionally run `npm install` with `terminal.run_command`
-
-### Scenario 3: Research and document
-
-**Prompt:** _"Search my notes for anything about LangGraph, then add a new note summarizing what we learned today."_
-
-The assistant will:
-1. Use `notes.search` to find existing notes
-2. Use `notes.add` to create a new note with appropriate tags
-
-## 🔧 Extending the Server
-
-### Adding a new tool
-
-1. **Implement the tool function** in an appropriate file under `src/tools/`
-2. **Export the function** and add JSDoc comments explaining usage
-3. **Register the tool** in `src/index.ts`:
+1. Create tool function in appropriate file under `src/tools/`
+2. Export the function with JSDoc comments
+3. Register in `src/index.ts`:
    - Add to `ListToolsRequestSchema` handler (tool metadata)
    - Add to `CallToolRequestSchema` handler (execution logic)
-4. **Update types** in `src/core/types.ts` if needed
-5. **Rebuild:** `npm run build`
+4. Update types in `src/core/types.ts` if needed
+5. Rebuild: `npm run build`
 
-### Configuring for other MCP clients
+## Project Structure
 
-The server uses standard MCP over stdio, so it should work with any MCP-compatible client. Just update `mcp.config.json` with the client-specific configuration format.
+```
+macchiato-mcp/
+├── src/
+│   ├── index.ts              # MCP server entry point & tool registration
+│   ├── config.ts             # Configuration (allowed roots, safety rules)
+│   ├── core/
+│   │   ├── exec.ts           # Safe command execution
+│   │   ├── paths.ts          # Path safety & validation
+│   │   └── types.ts          # Shared TypeScript types
+│   └── tools/
+│       ├── terminal.ts       # Terminal command execution
+│       ├── filesystem.ts     # File operations
+│       ├── git.ts            # Git integration
+│       ├── projects.ts       # Repository discovery
+│       ├── notes.ts          # Personal notes
+│       ├── browser.ts        # Chrome history & URL opening
+│       ├── macos-notes.ts    # Apple Notes integration
+│       ├── macos-reminders.ts
+│       ├── macos-clipboard.ts
+│       ├── macos-calendar.ts
+│       ├── macos-system.ts
+│       └── macos-network.ts
+├── dist/                     # Compiled JavaScript output
+├── package.json
+├── tsconfig.json
+└── mcp.config.example.json   # Example MCP client configuration
+```
 
-## 🤝 Contributing
+## Troubleshooting
 
-This is a personal project, but feel free to fork and customize for your own needs!
+### Chrome History Not Found
 
-## 📄 License
+If you see "Chrome history database not found":
+- Ensure Google Chrome is installed
+- Launch Chrome at least once
+- Verify the path exists: `~/Library/Application Support/Google/Chrome/Default/History`
+
+### Tool Not Available
+
+If tools don't appear in your MCP client:
+- Verify the build completed: `npm run build`
+- Check the path in your MCP client configuration
+- Restart your MCP client completely
+- Check server logs (stderr) for errors
+
+### Permission Errors
+
+If you get permission errors:
+- Verify the requested path is under an `ALLOWED_ROOT`
+- Check file/directory permissions with `ls -la`
+- Ensure the server process has read/write access
+
+### Command Blocked
+
+If a command is blocked:
+- Review `DANGEROUS_PATTERNS` in `src/config.ts`
+- Remove the pattern if you trust the command
+- Use dry-run mode to preview: `{"dry_run": true}`
+
+## Contributing
+
+This is a personal development tool. Feel free to fork and customize for your own needs.
+
+## License
 
 MIT
 
----
+## Built With
 
-**Built with:**
 - [Model Context Protocol SDK](https://github.com/modelcontextprotocol/sdk)
 - TypeScript
 - Node.js
-
-Happy coding! 🚀
-
