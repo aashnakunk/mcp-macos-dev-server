@@ -1,10 +1,10 @@
-# aashna-dev-mcp
+# dev-mcp
 
 A local Model Context Protocol (MCP) server that exposes your development environment to AI assistants. This server provides safe, structured access to your terminal, filesystem, git repositories, and personal notes.
 
-## 🎯 What is this?
+##  What is this?
 
-`aashna-dev-mcp` is a personal development assistant server that runs on your laptop. It allows AI assistants (like Claude, via MCP-compatible clients) to help you:
+`dev-mcp` is a personal development assistant server that runs on your laptop. It allows AI assistants (like Claude, via MCP-compatible clients) to help you:
 
 - Run terminal commands
 - Read and write files
