@@ -49,6 +49,28 @@ import {
   readFromClipboard,
   clearClipboard,
 } from "./tools/macos-clipboard.js";
+import {
+  getSystemStats,
+  listProcesses,
+  findProcesses,
+  killProcess,
+  analyzeDiskUsage,
+} from "./tools/macos-system.js";
+import {
+  listConnections,
+  checkPort,
+  listPorts,
+  pingHost,
+  dnsLookup,
+  getNetworkInfo,
+  testUrl,
+} from "./tools/macos-network.js";
+import {
+  listCalendarEvents,
+  createCalendarEvent,
+  checkAvailability,
+  listCalendars,
+} from "./tools/macos-calendar.js";
 
 /**
  * Creates and configures the MCP server
@@ -545,6 +567,270 @@ function createServer(): Server {
             properties: {},
           },
         },
+
+        // macOS System Monitoring tools
+        {
+          name: "macos_system_stats",
+          description:
+            "Gets overall system statistics (CPU usage, memory, disk space). Use this to check Mac performance and resources.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
+        {
+          name: "macos_process_list",
+          description:
+            "Lists running processes sorted by resource usage. Great for finding what's using CPU or memory.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              sort_by: {
+                type: "string",
+                enum: ["cpu", "memory"],
+                description: "Sort by cpu or memory (default: cpu)",
+              },
+              limit: {
+                type: "number",
+                description: "Number of processes to return (default: 20)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_process_find",
+          description:
+            "Finds processes by name or pattern. Useful for checking if specific apps are running.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              pattern: {
+                type: "string",
+                description: "Process name or pattern to search for",
+              },
+            },
+            required: ["pattern"],
+          },
+        },
+        {
+          name: "macos_process_kill",
+          description:
+            "Kills a process by PID. Use with caution - this is destructive!",
+          inputSchema: {
+            type: "object",
+            properties: {
+              pid: {
+                type: "number",
+                description: "Process ID to kill",
+              },
+              force: {
+                type: "boolean",
+                description: "Use SIGKILL (-9) instead of SIGTERM (default: false)",
+              },
+            },
+            required: ["pid"],
+          },
+        },
+        {
+          name: "macos_disk_usage",
+          description:
+            "Analyzes disk usage for a directory. Shows what's taking up space.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              path: {
+                type: "string",
+                description: "Directory path to analyze (default: home directory)",
+              },
+              depth: {
+                type: "number",
+                description: "How deep to scan (default: 1)",
+              },
+            },
+          },
+        },
+
+        // macOS Network tools
+        {
+          name: "macos_network_connections",
+          description:
+            "Lists active network connections.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              state: {
+                type: "string",
+                description: "Filter by state (e.g., ESTABLISHED, LISTEN)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_network_check_port",
+          description:
+            "Checks what process is using a specific port.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              port: {
+                type: "number",
+                description: "Port number to check",
+              },
+            },
+            required: ["port"],
+          },
+        },
+        {
+          name: "macos_network_list_ports",
+          description:
+            "Lists all ports currently in use.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              listening_only: {
+                type: "boolean",
+                description: "Only show listening ports (default: true)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_network_ping",
+          description:
+            "Pings a host to check connectivity.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              host: {
+                type: "string",
+                description: "Hostname or IP address",
+              },
+              count: {
+                type: "number",
+                description: "Number of pings (default: 4)",
+              },
+            },
+            required: ["host"],
+          },
+        },
+        {
+          name: "macos_network_dns_lookup",
+          description:
+            "Performs DNS lookup for a hostname.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              hostname: {
+                type: "string",
+                description: "Hostname to look up",
+              },
+            },
+            required: ["hostname"],
+          },
+        },
+        {
+          name: "macos_network_info",
+          description:
+            "Gets current network interface information (IP addresses, etc).",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
+        {
+          name: "macos_network_test_url",
+          description:
+            "Tests HTTP/HTTPS connectivity to a URL.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "URL to test",
+              },
+            },
+            required: ["url"],
+          },
+        },
+
+        // macOS Calendar tools
+        {
+          name: "macos_calendar_list_events",
+          description:
+            "Lists upcoming calendar events from Apple Calendar.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              days_ahead: {
+                type: "number",
+                description: "Number of days to look ahead (default: 7)",
+              },
+              limit: {
+                type: "number",
+                description: "Maximum events to return (default: 20)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_calendar_create_event",
+          description:
+            "Creates a new calendar event in Apple Calendar.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              summary: {
+                type: "string",
+                description: "Event title/summary",
+              },
+              start_date: {
+                type: "string",
+                description: "Start date/time (e.g., 'tomorrow at 2pm', '12/25/2024 10:00 AM')",
+              },
+              duration_minutes: {
+                type: "number",
+                description: "Event duration in minutes (default: 60)",
+              },
+              location: {
+                type: "string",
+                description: "Optional location",
+              },
+              calendar: {
+                type: "string",
+                description: "Calendar name (optional)",
+              },
+            },
+            required: ["summary", "start_date"],
+          },
+        },
+        {
+          name: "macos_calendar_check_availability",
+          description:
+            "Checks calendar availability for a time range.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              start_date: {
+                type: "string",
+                description: "Start date/time to check",
+              },
+              end_date: {
+                type: "string",
+                description: "End date/time to check",
+              },
+            },
+            required: ["start_date", "end_date"],
+          },
+        },
+        {
+          name: "macos_calendar_list",
+          description:
+            "Lists all available calendars.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
       ],
     };
   });
@@ -789,6 +1075,145 @@ function createServer(): Server {
 
       if (name === "macos_clipboard_clear") {
         const result = await clearClipboard();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS System Monitoring tools
+      if (name === "macos_system_stats") {
+        const result = await getSystemStats();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_process_list") {
+        const result = await listProcesses(
+          args.sort_by as "cpu" | "memory" | undefined,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_process_find") {
+        const result = await findProcesses(args.pattern as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_process_kill") {
+        const result = await killProcess(
+          args.pid as number,
+          args.force as boolean | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_disk_usage") {
+        const result = await analyzeDiskUsage(
+          args.path as string | undefined,
+          args.depth as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS Network tools
+      if (name === "macos_network_connections") {
+        const result = await listConnections(args.state as string | undefined);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_check_port") {
+        const result = await checkPort(args.port as number);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_list_ports") {
+        const result = await listPorts(args.listening_only as boolean | undefined);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_ping") {
+        const result = await pingHost(
+          args.host as string,
+          args.count as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_dns_lookup") {
+        const result = await dnsLookup(args.hostname as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_info") {
+        const result = await getNetworkInfo();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_network_test_url") {
+        const result = await testUrl(args.url as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS Calendar tools
+      if (name === "macos_calendar_list_events") {
+        const result = await listCalendarEvents(
+          args.days_ahead as number | undefined,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_calendar_create_event") {
+        const result = await createCalendarEvent(
+          args.summary as string,
+          args.start_date as string,
+          args.duration_minutes as number | undefined,
+          args.location as string | undefined,
+          args.calendar as string | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_calendar_check_availability") {
+        const result = await checkAvailability(
+          args.start_date as string,
+          args.end_date as string
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_calendar_list") {
+        const result = await listCalendars();
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
