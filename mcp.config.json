@@ -1,11 +1,13 @@
 {
   "mcpServers": {
-    "aashnakunk-dev-mcp": {
+    "aashna-dev-mcp": {
       "command": "node",
       "args": [
         "/Users/aashnakunkolienker/projects/mcp_aashna/dist/index.js"
       ],
-      "env": {}
+      "env": {
+        "MCP_ALLOWED_ROOTS": "~/dev,~/projects,~/code,~/workspace,~/Documents,~/Desktop,~/Downloads"
+      }
     }
   }
 }

@@ -12,14 +12,42 @@ import * as path from "path";
  * Allowed root directories for filesystem operations.
  * Tools will only be able to access files/folders within these roots.
  * 
- * Adjust these paths to match your development setup.
+ * Configure via environment variable MCP_ALLOWED_ROOTS (comma-separated paths).
+ * If not set, defaults to common development directories.
+ * 
+ * Example:
+ *   export MCP_ALLOWED_ROOTS="~/code,~/workspace,~/Documents"
+ * 
+ * Paths starting with ~ will be expanded to the user's home directory.
  */
-export const ALLOWED_ROOTS = [
-  path.join(os.homedir(), "dev"),
-  path.join(os.homedir(), "projects"),
-  path.join(os.homedir(), "Desktop"),
-  path.join(os.homedir(), "Documents"),
-];
+function getAllowedRoots(): string[] {
+  // Check for environment variable first
+  const envRoots = process.env.MCP_ALLOWED_ROOTS;
+  
+  if (envRoots) {
+    return envRoots.split(",").map((p) => {
+      const trimmed = p.trim();
+      // Expand ~ to home directory
+      if (trimmed.startsWith("~")) {
+        return path.join(os.homedir(), trimmed.slice(1));
+      }
+      return path.resolve(trimmed);
+    });
+  }
+  
+  // Default roots - sensible defaults that work on any macOS system
+  return [
+    path.join(os.homedir(), "dev"),
+    path.join(os.homedir(), "projects"),
+    path.join(os.homedir(), "code"),
+    path.join(os.homedir(), "workspace"),
+    path.join(os.homedir(), "Desktop"),
+    path.join(os.homedir(), "Documents"),
+    path.join(os.homedir(), "Downloads"),
+  ];
+}
+
+export const ALLOWED_ROOTS = getAllowedRoots();
 
 /**
  * Default timeout for shell commands (in seconds)
