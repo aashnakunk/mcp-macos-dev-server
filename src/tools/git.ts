@@ -38,6 +38,7 @@ function ensureGitRepo(repoPath: string): void {
  */
 export async function getGitStatus(repoPath: string): Promise<{
   status: string;
+  resolved_path: string;
 }> {
   const safePath = resolveSafePath(repoPath);
   ensureGitRepo(safePath);
@@ -51,7 +52,10 @@ export async function getGitStatus(repoPath: string): Promise<{
     throw new Error(`Git status failed: ${result.stderr}`);
   }
   
-  return { status: result.stdout };
+  return { 
+    status: result.stdout,
+    resolved_path: safePath
+  };
 }
 
 /**

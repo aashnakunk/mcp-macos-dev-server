@@ -34,6 +34,21 @@ import {
   runTests,
 } from "./tools/projects.js";
 import { addNote, listNotes, searchNotes } from "./tools/notes.js";
+import {
+  listAppleNotes,
+  createAppleNote,
+  searchAppleNotes,
+} from "./tools/macos-notes.js";
+import {
+  listReminders,
+  createReminder,
+  completeReminder,
+} from "./tools/macos-reminders.js";
+import {
+  copyToClipboard,
+  readFromClipboard,
+  clearClipboard,
+} from "./tools/macos-clipboard.js";
 
 /**
  * Creates and configures the MCP server
@@ -363,6 +378,173 @@ function createServer(): Server {
             required: ["query"],
           },
         },
+
+        // macOS Apple Notes tools
+        {
+          name: "macos_notes_list",
+          description:
+            "Lists notes from Apple Notes app. Can filter by folder name.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              folder: {
+                type: "string",
+                description: "Optional folder name to filter by",
+              },
+              limit: {
+                type: "number",
+                description: "Maximum notes to return (default: 50)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_notes_create",
+          description:
+            "Creates a new note in Apple Notes app.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "Note title",
+              },
+              body: {
+                type: "string",
+                description: "Note content",
+              },
+              folder: {
+                type: "string",
+                description: "Optional folder name (default: Notes)",
+              },
+            },
+            required: ["title", "body"],
+          },
+        },
+        {
+          name: "macos_notes_search",
+          description:
+            "Searches Apple Notes by text content.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "Search query",
+              },
+              limit: {
+                type: "number",
+                description: "Maximum results (default: 20)",
+              },
+            },
+            required: ["query"],
+          },
+        },
+
+        // macOS Reminders tools
+        {
+          name: "macos_reminders_list",
+          description:
+            "Lists reminders from Apple Reminders app.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              list: {
+                type: "string",
+                description: "Optional list name to filter by",
+              },
+              completed: {
+                type: "boolean",
+                description: "Show completed reminders (default: false)",
+              },
+              limit: {
+                type: "number",
+                description: "Maximum reminders to return (default: 50)",
+              },
+            },
+          },
+        },
+        {
+          name: "macos_reminders_create",
+          description:
+            "Creates a new reminder in Apple Reminders app.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "Reminder title/task",
+              },
+              list: {
+                type: "string",
+                description: "List name (default: Reminders)",
+              },
+              due_date: {
+                type: "string",
+                description: "Optional due date (e.g., 'tomorrow', '2024-12-25')",
+              },
+              notes: {
+                type: "string",
+                description: "Optional notes/description",
+              },
+            },
+            required: ["title"],
+          },
+        },
+        {
+          name: "macos_reminders_complete",
+          description:
+            "Marks a reminder as complete in Apple Reminders app.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              reminder_name: {
+                type: "string",
+                description: "Name of the reminder to complete",
+              },
+              list: {
+                type: "string",
+                description: "Optional list name to search in",
+              },
+            },
+            required: ["reminder_name"],
+          },
+        },
+
+        // macOS Clipboard tools
+        {
+          name: "macos_clipboard_copy",
+          description:
+            "Copies text to the system clipboard.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              text: {
+                type: "string",
+                description: "Text to copy to clipboard",
+              },
+            },
+            required: ["text"],
+          },
+        },
+        {
+          name: "macos_clipboard_read",
+          description:
+            "Reads text from the system clipboard.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
+        {
+          name: "macos_clipboard_clear",
+          description:
+            "Clears the system clipboard.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
       ],
     };
   });
@@ -519,6 +701,94 @@ function createServer(): Server {
           args.query as string,
           args.limit as number | undefined
         );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS Apple Notes tools
+      if (name === "macos_notes_list") {
+        const result = await listAppleNotes(
+          args.folder as string | undefined,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_notes_create") {
+        const result = await createAppleNote(
+          args.title as string,
+          args.body as string,
+          args.folder as string | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_notes_search") {
+        const result = await searchAppleNotes(
+          args.query as string,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS Reminders tools
+      if (name === "macos_reminders_list") {
+        const result = await listReminders(
+          args.list as string | undefined,
+          args.completed as boolean | undefined,
+          args.limit as number | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_reminders_create") {
+        const result = await createReminder(
+          args.title as string,
+          args.list as string | undefined,
+          args.due_date as string | undefined,
+          args.notes as string | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_reminders_complete") {
+        const result = await completeReminder(
+          args.reminder_name as string,
+          args.list as string | undefined
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // macOS Clipboard tools
+      if (name === "macos_clipboard_copy") {
+        const result = await copyToClipboard(args.text as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_clipboard_read") {
+        const result = await readFromClipboard();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      if (name === "macos_clipboard_clear") {
+        const result = await clearClipboard();
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
